@@ -1,8 +1,9 @@
 
 import React from 'react';
 import ClaimCard from '@/components/ClaimCard';
-import { Claim } from '@/data/mockData';
+import { Claim, ClaimStatus } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
+import { Dispatch, SetStateAction } from 'react';
 
 interface ClaimListProps {
   loading: boolean;
@@ -12,7 +13,7 @@ interface ClaimListProps {
   handleShare: (claimId: string) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: Dispatch<SetStateAction<ClaimStatus | 'all'>>;
   currentUser: any;
 }
 

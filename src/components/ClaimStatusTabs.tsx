@@ -2,10 +2,11 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClaimStatus } from '@/data/mockData';
+import { Dispatch, SetStateAction } from 'react';
 
 interface ClaimStatusTabsProps {
   activeTab: ClaimStatus | 'all';
-  setActiveTab: (tab: ClaimStatus | 'all') => void;
+  setActiveTab: Dispatch<SetStateAction<ClaimStatus | 'all'>>;
   children: React.ReactNode;
 }
 
