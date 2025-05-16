@@ -25,7 +25,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function Sidebar() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const location = useLocation();
 
   const menuItems = [
@@ -92,17 +92,16 @@ export function Sidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="px-3 py-2">
-          {currentUser && (
+          {currentUser && userProfile && (
             <div className="flex items-center gap-2 mb-4">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{currentUser.name}</span>
-                <span className="text-xs text-muted-foreground capitalize">{currentUser.role}</span>
+                <span className="text-sm font-medium">{userProfile.name}</span>
+                <span className="text-xs text-muted-foreground capitalize">{userProfile.role}</span>
               </div>
             </div>
           )}

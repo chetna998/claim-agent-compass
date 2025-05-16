@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const statusCount = getClaimStatusCount();
   const recentClaims = getRecentClaims(5);
@@ -32,7 +32,7 @@ const Dashboard = () => {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                 <p className="text-muted-foreground">
-                  Welcome back, {currentUser?.name}!
+                  Welcome back, {userProfile?.name || 'User'}!
                 </p>
               </div>
               <div className="flex items-center gap-2">
