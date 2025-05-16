@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import StatusBadge from './StatusBadge';
-import { Claim, getAgentById } from '@/data/mockData';
+import { Claim } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/utils';
 
@@ -11,15 +11,16 @@ interface ClaimCardProps {
   claim: Claim;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
+  onShare?: (id: string) => void;
 }
 
 const ClaimCard: React.FC<ClaimCardProps> = ({ 
   claim, 
   isSelected = false, 
-  onSelect 
+  onSelect,
+  onShare
 }) => {
   const navigate = useNavigate();
-  const assignedAgent = getAgentById(claim.assignedTo);
 
   return (
     <Card 
@@ -43,7 +44,7 @@ const ClaimCard: React.FC<ClaimCardProps> = ({
           {claim.description}
         </div>
         <div className="text-xs text-muted-foreground flex justify-between items-center">
-          <span>Assigned to: {assignedAgent?.name}</span>
+          <span>Incident Date: {new Date(claim.dateCreated).toLocaleDateString()}</span>
           <span>Updated: {new Date(claim.dateUpdated).toLocaleDateString()}</span>
         </div>
       </CardContent>
@@ -63,8 +64,11 @@ const ClaimCard: React.FC<ClaimCardProps> = ({
           variant="ghost" 
           onClick={(e) => {
             e.stopPropagation();
-            // Share claim action would go here, for now just navigate to detail
-            navigate(`/claims/${claim.id}`);
+            if (onShare) {
+              onShare(claim.id);
+            } else {
+              navigate(`/claims/${claim.id}`);
+            }
           }}
         >
           Share

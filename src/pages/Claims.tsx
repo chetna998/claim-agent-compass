@@ -7,12 +7,27 @@ import ShareClaimDialog from '@/components/ShareClaimDialog';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { claims as mockClaims, Claim, ClaimStatus, getClaimById } from '@/data/mockData';
+import { Claim, ClaimStatus } from '@/data/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Search } from 'lucide-react';
+
+interface SupabaseClaim {
+  id: string;
+  claimant_name: string;
+  claimant_email: string;
+  claimant_phone: string;
+  policy_number: string;
+  amount: number;
+  description: string;
+  status: ClaimStatus;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  incident_date: string;
+}
 
 const Claims = () => {
   const navigate = useNavigate();
@@ -21,32 +36,29 @@ const Claims = () => {
   const [activeTab, setActiveTab] = useState<ClaimStatus | 'all'>('all');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [claimToShare, setClaimToShare] = useState<Claim | null>(null);
-  const [claims, setClaims] = useState<any[]>([]);
+  const [claims, setClaims] = useState<SupabaseClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchClaims();
+    if (currentUser) {
+      fetchClaims();
+    }
   }, [currentUser]);
 
   const fetchClaims = async () => {
     setLoading(true);
     try {
-      if (!currentUser) {
-        setClaims(mockClaims); // Use mock data if not authenticated
-        return;
-      }
-
       const { data, error } = await supabase
         .from('claims')
-        .select('*');
+        .select('*')
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
       setClaims(data || []);
     } catch (error) {
       console.error('Error fetching claims:', error);
       toast.error('Failed to load claims');
-      setClaims(mockClaims); // Fallback to mock data
     } finally {
       setLoading(false);
     }
@@ -78,20 +90,15 @@ const Claims = () => {
       return;
     }
 
-    if (!currentUser) {
-      // Mock operation if not authenticated
-      toast.success(`Updated ${selectedClaims.length} claims to ${newStatus}`);
-      setSelectedClaims([]);
-      return;
-    }
-
     try {
-      // Update claims in batches - Supabase doesn't support updating multiple rows at once
-      // with an array of IDs, so we need to do them one by one
+      // Update claims in batches
       for (const claimId of selectedClaims) {
         const { error } = await supabase
           .from('claims')
-          .update({ status: newStatus })
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', claimId);
         
         if (error) throw error;
@@ -107,9 +114,21 @@ const Claims = () => {
   };
 
   const handleShare = (claimId: string) => {
-    const claim = getClaimById(claimId);
+    const claim = claims.find(c => c.id === claimId);
     if (claim) {
-      setClaimToShare(claim);
+      // Convert Supabase claim to the format expected by ShareClaimDialog
+      setClaimToShare({
+        id: claim.id,
+        claimNumber: claim.policy_number,
+        policyHolder: claim.claimant_name,
+        amount: claim.amount,
+        description: claim.description || '',
+        status: claim.status,
+        dateCreated: claim.created_at,
+        dateUpdated: claim.updated_at,
+        assignedTo: currentUser?.id || '',
+        documents: []
+      });
       setShareDialogOpen(true);
     }
   };
@@ -212,9 +231,21 @@ const Claims = () => {
                       {filteredClaims.map(claim => (
                         <ClaimCard 
                           key={claim.id}
-                          claim={claim}
+                          claim={{
+                            id: claim.id,
+                            claimNumber: claim.policy_number,
+                            policyHolder: claim.claimant_name,
+                            amount: claim.amount,
+                            description: claim.description || '',
+                            status: claim.status,
+                            dateCreated: claim.created_at,
+                            dateUpdated: claim.updated_at,
+                            assignedTo: currentUser?.id || '',
+                            documents: []
+                          }}
                           isSelected={selectedClaims.includes(claim.id)}
                           onSelect={handleClaimSelect}
+                          onShare={handleShare}
                         />
                       ))}
                     </div>

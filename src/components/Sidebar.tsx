@@ -27,8 +27,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 export function Sidebar() {
   const { currentUser, userProfile, logout } = useAuth();
   const location = useLocation();
+  const isAdmin = userProfile?.role === 'admin';
 
-  const menuItems = [
+  // Base menu items for all users
+  const baseMenuItems = [
     {
       title: 'Dashboard',
       icon: LayoutDashboard,
@@ -40,25 +42,42 @@ export function Sidebar() {
       icon: FileText,
       path: '/claims',
       id: 'claims-navigation'
-    },
+    }
+  ];
+  
+  // Admin-specific menu items
+  const adminMenuItems = [
     {
       title: 'Agents',
       icon: Users,
       path: '/agents',
       id: 'agents-navigation'
-    },
+    }
+  ];
+  
+  // Agent-specific menu items
+  const agentMenuItems = [
     {
       title: 'Search',
       icon: Search,
       path: '/search',
       id: 'search-navigation'
-    },
-    {
-      title: 'Settings',
-      icon: Settings,
-      path: '/settings',
-      id: 'settings-navigation'
     }
+  ];
+  
+  // Settings available to all users
+  const settingsMenuItem = {
+    title: 'Settings',
+    icon: Settings,
+    path: '/settings',
+    id: 'settings-navigation'
+  };
+  
+  // Combine menu items based on user role
+  const menuItems = [
+    ...baseMenuItems,
+    ...(isAdmin ? adminMenuItems : agentMenuItems),
+    settingsMenuItem
   ];
 
   return (
