@@ -31,7 +31,7 @@ interface SupabaseClaim {
 
 const Claims = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [selectedClaims, setSelectedClaims] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<ClaimStatus | 'all'>('all');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -39,6 +39,7 @@ const Claims = () => {
   const [claims, setClaims] = useState<SupabaseClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const isAdmin = userProfile?.role === 'admin';
 
   useEffect(() => {
     if (currentUser) {
@@ -175,11 +176,13 @@ const Claims = () => {
                     </Button>
                   </>
                 )}
-                <Button
-                  onClick={() => navigate('/new-claim')}
-                >
-                  New Claim
-                </Button>
+                {isAdmin && (
+                  <Button
+                    onClick={() => navigate('/new-claim')}
+                  >
+                    New Claim
+                  </Button>
+                )}
               </div>
             </div>
 

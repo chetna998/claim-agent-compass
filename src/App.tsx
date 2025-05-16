@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import AgentDashboard from "./pages/AgentDashboard";
 import Claims from "./pages/Claims";
 import ClaimDetails from "./pages/ClaimDetails";
 import NewClaim from "./pages/NewClaim";
@@ -16,8 +17,14 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 // Protected route that checks if user is authenticated
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ 
+  children, 
+  allowedRoles = undefined
+}: { 
+  children: React.ReactNode, 
+  allowedRoles?: string[] 
+}) => {
+  const { isAuthenticated, loading, userProfile } = useAuth();
 
   if (loading) {
     return <div className="h-screen flex items-center justify-center">Loading...</div>;
@@ -27,55 +34,89 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/" replace />;
   }
 
+  // If there are role restrictions and the user's role is not included
+  if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role)) {
+    // Redirect agents to agent dashboard, admins to admin dashboard
+    return <Navigate to={userProfile.role === 'admin' ? '/dashboard' : '/agent-dashboard'} replace />;
+  }
+
   return <>{children}</>;
 };
 
-const AppRoutes = () => (
-  <Routes>
-    <Route path="/" element={<Index />} />
-    <Route 
-      path="/dashboard" 
-      element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/claims" 
-      element={
-        <ProtectedRoute>
-          <Claims />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/claims/:id" 
-      element={
-        <ProtectedRoute>
-          <ClaimDetails />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/new-claim" 
-      element={
-        <ProtectedRoute>
-          <NewClaim />
-        </ProtectedRoute>
-      } 
-    />
-    <Route 
-      path="/settings" 
-      element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } 
-    />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
+const AppRoutes = () => {
+  const { userProfile } = useAuth();
+  
+  // Determine the dashboard route based on user role
+  const DashboardRoute = () => {
+    if (!userProfile) return <Navigate to="/" />;
+    return userProfile.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/agent-dashboard" />;
+  };
+
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      
+      {/* When authenticated users visit root, redirect to appropriate dashboard */}
+      <Route path="/home" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
+      
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/agent-dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['agent']}>
+            <AgentDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/claims" 
+        element={
+          <ProtectedRoute>
+            <Claims />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/claims/:id" 
+        element={
+          <ProtectedRoute>
+            <ClaimDetails />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/new-claim" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <NewClaim />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

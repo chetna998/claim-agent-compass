@@ -32,9 +32,9 @@ export function Sidebar() {
   // Base menu items for all users
   const baseMenuItems = [
     {
-      title: 'Dashboard',
+      title: isAdmin ? 'Dashboard' : 'Agent Dashboard',
       icon: LayoutDashboard,
-      path: '/dashboard',
+      path: isAdmin ? '/dashboard' : '/agent-dashboard',
       id: 'dashboard-navigation'
     },
     {
@@ -76,7 +76,7 @@ export function Sidebar() {
   // Combine menu items based on user role
   const menuItems = [
     ...baseMenuItems,
-    ...(isAdmin ? adminMenuItems : agentMenuItems),
+    ...(isAdmin ? adminMenuItems : []),
     settingsMenuItem
   ];
 
