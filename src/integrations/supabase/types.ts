@@ -9,7 +9,72 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      claims: {
+        Row: {
+          amount: number | null
+          claimant_email: string | null
+          claimant_name: string
+          claimant_phone: string | null
+          created_at: string
+          description: string | null
+          id: string
+          incident_date: string | null
+          policy_number: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          claimant_email?: string | null
+          claimant_name: string
+          claimant_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_date?: string | null
+          policy_number: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          claimant_email?: string | null
+          claimant_name?: string
+          claimant_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_date?: string | null
+          policy_number?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,12 +1,15 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import LoginForm from '@/components/LoginForm';
+import SignupForm from '@/components/SignupForm';
 import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [showLogin, setShowLogin] = useState(true);
 
   if (loading) {
     return (
@@ -34,7 +37,27 @@ const Index = () => {
             The complete claims management solution for insurance agents
           </p>
         </div>
-        <LoginForm />
+        
+        <div className="flex justify-center mb-6">
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              variant={showLogin ? "default" : "outline"}
+              onClick={() => setShowLogin(true)}
+              className="w-full"
+            >
+              Login
+            </Button>
+            <Button
+              variant={!showLogin ? "default" : "outline"}
+              onClick={() => setShowLogin(false)}
+              className="w-full"
+            >
+              Sign Up
+            </Button>
+          </div>
+        </div>
+        
+        {showLogin ? <LoginForm /> : <SignupForm />}
       </div>
     </div>
   );

@@ -1,25 +1,68 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import ClaimCard from '@/components/ClaimCard';
 import ShareClaimDialog from '@/components/ShareClaimDialog';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { claims, Claim, ClaimStatus, getClaimById } from '@/data/mockData';
+import { Input } from '@/components/ui/input';
+import { claims as mockClaims, Claim, ClaimStatus, getClaimById } from '@/data/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Search } from 'lucide-react';
 
 const Claims = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [selectedClaims, setSelectedClaims] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<ClaimStatus | 'all'>('all');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [claimToShare, setClaimToShare] = useState<Claim | null>(null);
+  const [claims, setClaims] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredClaims = activeTab === 'all' 
-    ? claims 
-    : claims.filter(claim => claim.status === activeTab);
+  useEffect(() => {
+    fetchClaims();
+  }, [currentUser]);
+
+  const fetchClaims = async () => {
+    setLoading(true);
+    try {
+      if (!currentUser) {
+        setClaims(mockClaims); // Use mock data if not authenticated
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('claims')
+        .select('*');
+
+      if (error) throw error;
+      setClaims(data || []);
+    } catch (error) {
+      console.error('Error fetching claims:', error);
+      toast.error('Failed to load claims');
+      setClaims(mockClaims); // Fallback to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredClaims = claims
+    .filter(claim => activeTab === 'all' || claim.status === activeTab)
+    .filter(claim => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        claim.claimant_name?.toLowerCase().includes(searchLower) ||
+        claim.policy_number?.toLowerCase().includes(searchLower) ||
+        claim.description?.toLowerCase().includes(searchLower)
+      );
+    });
 
   const handleClaimSelect = (id: string) => {
     setSelectedClaims(prev => 
@@ -29,15 +72,38 @@ const Claims = () => {
     );
   };
 
-  const handleBulkAction = (action: string) => {
+  const handleBulkAction = async (newStatus: ClaimStatus) => {
     if (selectedClaims.length === 0) {
       toast.error('Please select at least one claim');
       return;
     }
 
-    // In a real app, this would call an API
-    toast.success(`${action} ${selectedClaims.length} claims`);
-    setSelectedClaims([]);
+    if (!currentUser) {
+      // Mock operation if not authenticated
+      toast.success(`Updated ${selectedClaims.length} claims to ${newStatus}`);
+      setSelectedClaims([]);
+      return;
+    }
+
+    try {
+      // Update claims in batches - Supabase doesn't support updating multiple rows at once
+      // with an array of IDs, so we need to do them one by one
+      for (const claimId of selectedClaims) {
+        const { error } = await supabase
+          .from('claims')
+          .update({ status: newStatus })
+          .eq('id', claimId);
+        
+        if (error) throw error;
+      }
+
+      toast.success(`Updated ${selectedClaims.length} claims to ${newStatus}`);
+      setSelectedClaims([]);
+      fetchClaims(); // Refresh claims data
+    } catch (error) {
+      console.error('Error updating claims:', error);
+      toast.error('Failed to update claims');
+    }
   };
 
   const handleShare = (claimId: string) => {
@@ -66,13 +132,13 @@ const Claims = () => {
                   <>
                     <Button 
                       variant="outline" 
-                      onClick={() => handleBulkAction('Approved')}
+                      onClick={() => handleBulkAction('approved')}
                     >
                       Approve Selected
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={() => handleBulkAction('Rejected')}
+                      onClick={() => handleBulkAction('denied')}
                     >
                       Reject Selected
                     </Button>
@@ -89,6 +155,29 @@ const Claims = () => {
                 >
                   New Claim
                 </Button>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex items-center gap-2 max-w-md mb-4">
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search claims by name, policy, or description..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                {searchTerm && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -112,25 +201,44 @@ const Claims = () => {
                   {filteredClaims.length} claims • {selectedClaims.length} selected
                 </p>
                 <TabsContent value={activeTab} className="mt-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredClaims.map(claim => (
-                      <ClaimCard 
-                        key={claim.id}
-                        claim={claim}
-                        isSelected={selectedClaims.includes(claim.id)}
-                        onSelect={handleClaimSelect}
-                      />
-                    ))}
-                  </div>
-                  {filteredClaims.length === 0 && (
+                  {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3].map((n) => (
+                        <div key={n} className="h-48 bg-muted rounded-md animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredClaims.map(claim => (
+                        <ClaimCard 
+                          key={claim.id}
+                          claim={claim}
+                          isSelected={selectedClaims.includes(claim.id)}
+                          onSelect={handleClaimSelect}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!loading && filteredClaims.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-muted-foreground mb-4">No claims found</p>
-                      <Button 
-                        variant="outline"
-                        onClick={() => setActiveTab('all')}
-                      >
-                        View All Claims
-                      </Button>
+                      <p className="text-muted-foreground mb-4">
+                        {searchTerm ? 'No claims match your search' : 'No claims found'}
+                      </p>
+                      {searchTerm ? (
+                        <Button 
+                          variant="outline"
+                          onClick={() => setSearchTerm('')}
+                        >
+                          Clear Search
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline"
+                          onClick={() => setActiveTab('all')}
+                        >
+                          View All Claims
+                        </Button>
+                      )}
                     </div>
                   )}
                 </TabsContent>

@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Claims from "./pages/Claims";
 import ClaimDetails from "./pages/ClaimDetails";
+import NewClaim from "./pages/NewClaim";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +54,22 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <ClaimDetails />
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/new-claim" 
+      element={
+        <ProtectedRoute>
+          <NewClaim />
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/settings" 
+      element={
+        <ProtectedRoute>
+          <Settings />
         </ProtectedRoute>
       } 
     />
