@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -14,19 +13,20 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Search } from 'lucide-react';
 
+// Define proper SupabaseClaim type that matches the database schema
 interface SupabaseClaim {
   id: string;
   claimant_name: string;
-  claimant_email: string;
-  claimant_phone: string;
+  claimant_email: string | null;
+  claimant_phone: string | null;
   policy_number: string;
-  amount: number;
-  description: string;
+  amount: number | null;
+  description: string | null;
   status: ClaimStatus;
   created_at: string;
   updated_at: string;
   user_id: string;
-  incident_date: string;
+  incident_date: string | null;
 }
 
 const Claims = () => {
@@ -55,7 +55,13 @@ const Claims = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setClaims(data || []);
+      // Ensure the status is cast to ClaimStatus type
+      const typedClaims = data?.map(claim => ({
+        ...claim,
+        status: claim.status as ClaimStatus
+      })) || [];
+      
+      setClaims(typedClaims);
     } catch (error) {
       console.error('Error fetching claims:', error);
       toast.error('Failed to load claims');
@@ -121,10 +127,10 @@ const Claims = () => {
         id: claim.id,
         claimNumber: claim.policy_number,
         policyHolder: claim.claimant_name,
-        amount: claim.amount,
+        amount: claim.amount || 0,
         description: claim.description || '',
         status: claim.status,
-        dateCreated: claim.created_at,
+        dateSubmitted: claim.created_at,
         dateUpdated: claim.updated_at,
         assignedTo: currentUser?.id || '',
         documents: []
@@ -235,10 +241,10 @@ const Claims = () => {
                             id: claim.id,
                             claimNumber: claim.policy_number,
                             policyHolder: claim.claimant_name,
-                            amount: claim.amount,
+                            amount: claim.amount || 0,
                             description: claim.description || '',
                             status: claim.status,
-                            dateCreated: claim.created_at,
+                            dateSubmitted: claim.created_at,
                             dateUpdated: claim.updated_at,
                             assignedTo: currentUser?.id || '',
                             documents: []

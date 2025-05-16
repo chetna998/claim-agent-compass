@@ -44,7 +44,7 @@ const ClaimCard: React.FC<ClaimCardProps> = ({
           {claim.description}
         </div>
         <div className="text-xs text-muted-foreground flex justify-between items-center">
-          <span>Incident Date: {new Date(claim.dateCreated).toLocaleDateString()}</span>
+          <span>Incident Date: {new Date(claim.dateSubmitted).toLocaleDateString()}</span>
           <span>Updated: {new Date(claim.dateUpdated).toLocaleDateString()}</span>
         </div>
       </CardContent>
