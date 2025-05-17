@@ -51,35 +51,54 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
-      // Use type assertion to work with the new table structure
-      const { data, error } = await (supabase
+      // First, get the shared claims
+      const { data: sharedClaimsData, error: sharedClaimsError } = await (supabase
         .from('shared_claims' as any)
-        .select(`
-          id,
-          claim_id,
-          shared_by,
-          shared_with,
-          created_at,
-          claims:claim_id (*),
-          profiles:shared_by (name)
-        `)
+        .select('*')
         .eq('shared_with', currentUser.id)
         .order('created_at', { ascending: false }) as any);
       
-      if (error) throw error;
+      if (sharedClaimsError) throw sharedClaimsError;
       
-      // Transform the data to match the expected structure
-      const formattedData = data?.map((item: any) => ({
-        id: item.id,
-        claim_id: item.claim_id,
-        shared_by: item.shared_by,
-        shared_with: item.shared_with,
-        created_at: item.created_at,
-        claim: item.claims,
-        shared_by_profile: {
-          name: item.profiles?.name || 'Unknown'
+      // Now get the claims data for each shared claim
+      const formattedData: SharedClaim[] = [];
+      
+      for (const sharedClaim of sharedClaimsData || []) {
+        // Get the claim details
+        const { data: claimData, error: claimError } = await supabase
+          .from('claims')
+          .select('*')
+          .eq('id', sharedClaim.claim_id)
+          .single();
+        
+        if (claimError) {
+          console.error('Error fetching claim:', claimError);
+          continue;
         }
-      })) || [];
+        
+        // Get the user profile for shared_by
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', sharedClaim.shared_by)
+          .single();
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+        
+        formattedData.push({
+          id: sharedClaim.id,
+          claim_id: sharedClaim.claim_id,
+          shared_by: sharedClaim.shared_by,
+          shared_with: sharedClaim.shared_with,
+          created_at: sharedClaim.created_at,
+          claim: claimData,
+          shared_by_profile: {
+            name: profileData?.name || 'Unknown'
+          }
+        });
+      }
 
       setSharedClaims(formattedData);
     } catch (error) {
