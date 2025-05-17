@@ -51,29 +51,25 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
     }
 
     try {
-      // Check if shared_claims table exists
-      const { data: tableCheckData, error: tableCheckError } = await supabase
-        .from('shared_claims')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
+      // Use rpc method instead of direct table access since the types aren't updated yet
+      const { error } = await supabase.rpc('share_claim', {
+        p_claim_id: claim.id,
+        p_shared_by: claim.assignedTo,
+        p_shared_with: selectedAgent
+      });
+      
+      if (error) {
+        // If RPC fails, try a fallback approach with raw SQL
+        console.error('RPC failed, trying alternative approach');
         
-      // If the table doesn't exist yet, show an error and return
-      if (tableCheckError && tableCheckError.message.includes("relation \"shared_claims\" does not exist")) {
-        toast.error('Sharing feature is not available. Please contact administrator.');
-        return;
-      }
-      
-      // If the table exists, create a shared claim record
-      const { error } = await supabase
-        .from('shared_claims')
-        .insert({
-          claim_id: claim.id,
-          shared_by: claim.assignedTo,
-          shared_with: selectedAgent
+        const { error: insertError } = await supabase.rpc('insert_shared_claim', {
+          p_claim_id: claim.id,
+          p_shared_by: claim.assignedTo,
+          p_shared_with: selectedAgent
         });
-      
-      if (error) throw error;
+        
+        if (insertError) throw insertError;
+      }
       
       // Find agent info
       const agent = agents.find(a => a.id === selectedAgent);

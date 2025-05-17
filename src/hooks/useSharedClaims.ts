@@ -51,29 +51,10 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
-      // Check if the shared_claims table exists by trying to fetch metadata
-      const { data: tablesData, error: tablesError } = await supabase
-        .from('shared_claims')
-        .select('id')
-        .limit(1);
-      
-      if (tablesError) {
-        console.error('Error accessing shared_claims:', tablesError);
-        setSharedClaims([]);
-        setLoading(false);
-        return;
-      }
-      
-      // If the table exists, proceed with the query
-      const { data, error } = await supabase
-        .from('shared_claims')
-        .select(`
-          id, claim_id, shared_by, shared_with, created_at,
-          claim:claims(*),
-          shared_by_profile:profiles!shared_claims_shared_by_fkey(name)
-        `)
-        .eq('shared_with', currentUser.id)
-        .order('created_at', { ascending: false });
+      // Use a different approach with raw SQL since the types aren't updated yet
+      const { data, error } = await supabase.rpc('get_shared_claims_for_user', {
+        user_id: currentUser.id
+      });
       
       if (error) throw error;
       setSharedClaims(data || []);

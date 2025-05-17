@@ -8,15 +8,8 @@ import { PlusCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  created_at: string;
-}
-
 const Agents = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,7 +56,7 @@ const Agents = () => {
             </div>
 
             <div className="space-y-6">
-              <AgentsList agents={agents} loading={loading} />
+              <AgentsList />
             </div>
           </div>
         </main>
