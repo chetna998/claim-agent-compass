@@ -51,14 +51,37 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
-      // Use the RPC function to get shared claims
-      const { data, error } = await supabase.rpc('get_shared_claims_for_user', {
-        user_id: currentUser.id
-      });
+      // Instead of using RPC, use a join query to get the same data
+      const { data, error } = await supabase
+        .from('shared_claims')
+        .select(`
+          id,
+          claim_id,
+          shared_by,
+          shared_with,
+          created_at,
+          claims:claim_id (*),
+          profiles:shared_by (name)
+        `)
+        .eq('shared_with', currentUser.id)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      setSharedClaims(data as SharedClaim[] || []);
+      // Transform the data to match the expected structure
+      const formattedData = data?.map(item => ({
+        id: item.id,
+        claim_id: item.claim_id,
+        shared_by: item.shared_by,
+        shared_with: item.shared_with,
+        created_at: item.created_at,
+        claim: item.claims,
+        shared_by_profile: {
+          name: item.profiles?.name || 'Unknown'
+        }
+      })) || [];
+
+      setSharedClaims(formattedData);
     } catch (error) {
       console.error('Error fetching shared claims:', error);
       toast.error('Failed to load shared claims');
