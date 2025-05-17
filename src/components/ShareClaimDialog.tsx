@@ -44,7 +44,6 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
     }
   };
 
-  // Create a shared_claims table in Supabase SQL migration
   const handleShare = async () => {
     if (!selectedAgent || !claim) {
       toast.error('Please select an agent');
@@ -52,14 +51,26 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
     }
 
     try {
-      // Create a shared claim record
+      // Check if shared_claims table exists
+      const { data: tableCheckData, error: tableCheckError } = await supabase
+        .from('shared_claims')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+        
+      // If the table doesn't exist yet, show an error and return
+      if (tableCheckError && tableCheckError.message.includes("relation \"shared_claims\" does not exist")) {
+        toast.error('Sharing feature is not available. Please contact administrator.');
+        return;
+      }
+      
+      // If the table exists, create a shared claim record
       const { error } = await supabase
         .from('shared_claims')
         .insert({
           claim_id: claim.id,
           shared_by: claim.assignedTo,
-          shared_with: selectedAgent,
-          created_at: new Date().toISOString()
+          shared_with: selectedAgent
         });
       
       if (error) throw error;
@@ -70,9 +81,14 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
       toast.success(`Claim ${claim.claimNumber} shared with ${agent?.name}`);
       onClose();
       setSelectedAgent('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sharing claim:', error);
-      toast.error('Failed to share claim');
+      
+      if (error.message?.includes('duplicate key value violates unique constraint')) {
+        toast.error('This claim has already been shared with this agent');
+      } else {
+        toast.error('Failed to share claim');
+      }
     }
   };
 

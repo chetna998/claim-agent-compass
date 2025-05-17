@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import ShareClaimDialog from '@/components/ShareClaimDialog';
@@ -9,6 +8,7 @@ import ClaimSearch from '@/components/ClaimSearch';
 import ClaimStatusTabs from '@/components/ClaimStatusTabs';
 import ClaimList from '@/components/ClaimList';
 import ClaimActions from '@/components/ClaimActions';
+import ClaimCard from '@/components/ClaimCard';
 import { useClaims } from '@/hooks/useClaims';
 import { useSharedClaims } from '@/hooks/useSharedClaims';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';

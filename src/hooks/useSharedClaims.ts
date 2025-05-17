@@ -24,12 +24,26 @@ export const useSharedClaims = () => {
   useEffect(() => {
     if (currentUser) {
       fetchSharedClaims();
-      subscribeToSharedClaims();
+      
+      // Set up realtime subscription
+      const channel = supabase
+        .channel('shared-claims')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'shared_claims',
+          filter: `shared_with=eq.${currentUser.id}`
+        }, (payload) => {
+          // When a new claim is shared with current user
+          toast.success('A new claim has been shared with you!');
+          fetchSharedClaims();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-    
-    return () => {
-      supabase.removeChannel('shared-claims');
-    };
   }, [currentUser]);
 
   const fetchSharedClaims = async () => {
@@ -37,6 +51,20 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
+      // Check if the shared_claims table exists by trying to fetch metadata
+      const { data: tablesData, error: tablesError } = await supabase
+        .from('shared_claims')
+        .select('id')
+        .limit(1);
+      
+      if (tablesError) {
+        console.error('Error accessing shared_claims:', tablesError);
+        setSharedClaims([]);
+        setLoading(false);
+        return;
+      }
+      
+      // If the table exists, proceed with the query
       const { data, error } = await supabase
         .from('shared_claims')
         .select(`
@@ -52,32 +80,10 @@ export const useSharedClaims = () => {
     } catch (error) {
       console.error('Error fetching shared claims:', error);
       toast.error('Failed to load shared claims');
+      setSharedClaims([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const subscribeToSharedClaims = () => {
-    if (!currentUser) return;
-    
-    // Enable realtime for shared_claims table
-    const channel = supabase
-      .channel('shared-claims')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'shared_claims',
-          filter: `shared_with=eq.${currentUser.id}`
-        },
-        (payload) => {
-          // When a new claim is shared with current user
-          toast.success('A new claim has been shared with you!');
-          fetchSharedClaims();
-        }
-      )
-      .subscribe();
   };
 
   return {
