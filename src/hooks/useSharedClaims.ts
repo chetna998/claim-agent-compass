@@ -52,7 +52,9 @@ export const useSharedClaims = () => {
     setLoading(true);
     try {
       // Use the RPC function to get shared claims
-      const { data, error } = await supabase.rpc<SharedClaim[]>('get_shared_claims_for_user', {
+      const { data, error } = await supabase.rpc<SharedClaim[], {
+        user_id: string
+      }>('get_shared_claims_for_user', {
         user_id: currentUser.id
       });
       
