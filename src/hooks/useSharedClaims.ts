@@ -52,15 +52,13 @@ export const useSharedClaims = () => {
     setLoading(true);
     try {
       // Use the RPC function to get shared claims
-      const { data, error } = await supabase.rpc<SharedClaim[], {
-        user_id: string
-      }>('get_shared_claims_for_user', {
+      const { data, error } = await supabase.rpc('get_shared_claims_for_user', {
         user_id: currentUser.id
       });
       
       if (error) throw error;
       
-      setSharedClaims(data || []);
+      setSharedClaims(data as SharedClaim[] || []);
     } catch (error) {
       console.error('Error fetching shared claims:', error);
       toast.error('Failed to load shared claims');

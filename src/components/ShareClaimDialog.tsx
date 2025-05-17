@@ -52,11 +52,7 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
 
     try {
       // Use rpc method instead of direct table access
-      const { error } = await supabase.rpc<void, {
-        p_claim_id: string,
-        p_shared_by: string,
-        p_shared_with: string
-      }>('share_claim', {
+      const { error } = await supabase.rpc('share_claim', {
         p_claim_id: claim.id,
         p_shared_by: claim.assignedTo,
         p_shared_with: selectedAgent
@@ -66,11 +62,7 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
         // If RPC fails, try a fallback approach
         console.error('RPC failed, trying alternative approach:', error);
         
-        const { error: insertError } = await supabase.rpc<void, {
-          p_claim_id: string,
-          p_shared_by: string,
-          p_shared_with: string
-        }>('insert_shared_claim', {
+        const { error: insertError } = await supabase.rpc('insert_shared_claim', {
           p_claim_id: claim.id,
           p_shared_by: claim.assignedTo,
           p_shared_with: selectedAgent
