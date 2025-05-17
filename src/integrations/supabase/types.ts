@@ -75,6 +75,38 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_claims: {
+        Row: {
+          claim_id: string
+          created_at: string
+          id: string
+          shared_by: string
+          shared_with: string
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          id?: string
+          shared_by: string
+          shared_with: string
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          id?: string
+          shared_by?: string
+          shared_with?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_claims_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

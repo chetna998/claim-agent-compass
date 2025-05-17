@@ -51,9 +51,9 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
-      // Instead of using RPC, use a join query to get the same data
-      const { data, error } = await supabase
-        .from('shared_claims')
+      // Use type assertion to work with the new table structure
+      const { data, error } = await (supabase
+        .from('shared_claims' as any)
         .select(`
           id,
           claim_id,
@@ -64,12 +64,12 @@ export const useSharedClaims = () => {
           profiles:shared_by (name)
         `)
         .eq('shared_with', currentUser.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
       
       if (error) throw error;
       
       // Transform the data to match the expected structure
-      const formattedData = data?.map(item => ({
+      const formattedData = data?.map((item: any) => ({
         id: item.id,
         claim_id: item.claim_id,
         shared_by: item.shared_by,

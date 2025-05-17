@@ -51,14 +51,15 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
     }
 
     try {
-      // Instead of using RPC, directly insert into shared_claims table
+      // Use type assertion to satisfy TypeScript - the request will actually work
+      // with our SQL-created table structure
       const { error } = await supabase
-        .from('shared_claims')
+        .from('shared_claims' as any)
         .insert({
           claim_id: claim.id,
           shared_by: claim.assignedTo,
           shared_with: selectedAgent
-        });
+        } as any);
       
       if (error) {
         console.error('Error sharing claim:', error);
