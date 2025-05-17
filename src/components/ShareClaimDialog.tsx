@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Claim, agents } from '@/data/mockData';
+import { Claim } from '@/data/mockData';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ShareClaimDialogProps {
   claim: Claim | null;
@@ -15,19 +16,64 @@ interface ShareClaimDialogProps {
 
 const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onClose }) => {
   const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [agents, setAgents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleShare = () => {
-    if (!selectedAgent) {
+  // Fetch available agents
+  useEffect(() => {
+    if (isOpen) {
+      fetchAgents();
+    }
+  }, [isOpen]);
+
+  const fetchAgents = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, role')
+        .eq('role', 'agent');
+      
+      if (error) throw error;
+      setAgents(data || []);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      toast.error('Failed to load agents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Create a shared_claims table in Supabase SQL migration
+  const handleShare = async () => {
+    if (!selectedAgent || !claim) {
       toast.error('Please select an agent');
       return;
     }
 
-    const agent = agents.find(a => a.id === selectedAgent);
-    
-    // In a real app, this would call an API
-    toast.success(`Claim ${claim?.claimNumber} shared with ${agent?.name}`);
-    onClose();
-    setSelectedAgent('');
+    try {
+      // Create a shared claim record
+      const { error } = await supabase
+        .from('shared_claims')
+        .insert({
+          claim_id: claim.id,
+          shared_by: claim.assignedTo,
+          shared_with: selectedAgent,
+          created_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+      
+      // Find agent info
+      const agent = agents.find(a => a.id === selectedAgent);
+      
+      toast.success(`Claim ${claim.claimNumber} shared with ${agent?.name}`);
+      onClose();
+      setSelectedAgent('');
+    } catch (error) {
+      console.error('Error sharing claim:', error);
+      toast.error('Failed to share claim');
+    }
   };
 
   return (
@@ -49,9 +95,10 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
             <Select
               value={selectedAgent}
               onValueChange={setSelectedAgent}
+              disabled={loading}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select an agent" />
+                <SelectValue placeholder={loading ? "Loading agents..." : "Select an agent"} />
               </SelectTrigger>
               <SelectContent>
                 {agents
@@ -67,7 +114,7 @@ const ShareClaimDialog: React.FC<ShareClaimDialogProps> = ({ claim, isOpen, onCl
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleShare}>Share Claim</Button>
+          <Button onClick={handleShare} disabled={loading || !selectedAgent}>Share Claim</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

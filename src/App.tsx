@@ -13,6 +13,7 @@ import ClaimDetails from "./pages/ClaimDetails";
 import NewClaim from "./pages/NewClaim";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Agents from "./pages/Agents"; // Add import for Agents page
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <NewClaim />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Add Agents route */}
+      <Route 
+        path="/agents" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Agents />
           </ProtectedRoute>
         } 
       />

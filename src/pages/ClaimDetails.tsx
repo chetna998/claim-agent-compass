@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import ShareClaimDialog from '@/components/ShareClaimDialog';
@@ -10,17 +10,114 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { getClaimById, getAgentById } from '@/data/mockData';
+import { ClaimStatus, getAgentById } from '@/data/mockData';
 import { ArrowLeft, Share2, FileText, Calendar, User, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 const ClaimDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [claim, setClaim] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { userProfile } = useAuth();
+  const isAgent = userProfile?.role === 'agent';
   
-  const claim = id ? getClaimById(id) : null;
-  const assignedAgent = claim ? getAgentById(claim.assignedTo) : null;
+  useEffect(() => {
+    if (id) {
+      fetchClaimDetails(id);
+    }
+  }, [id]);
+
+  const fetchClaimDetails = async (claimId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('claims')
+        .select('*')
+        .eq('id', claimId)
+        .single();
+      
+      if (error) throw error;
+      setClaim(data);
+    } catch (error) {
+      console.error('Error fetching claim details:', error);
+      toast.error('Failed to load claim details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch assigned agent details
+  const [assignedAgent, setAssignedAgent] = useState<any>(null);
+  
+  useEffect(() => {
+    if (claim?.user_id) {
+      fetchAgentDetails(claim.user_id);
+    }
+  }, [claim?.user_id]);
+
+  const fetchAgentDetails = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setAssignedAgent(data);
+    } catch (error) {
+      console.error('Error fetching agent details:', error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: ClaimStatus) => {
+    if (!claim) return;
+    
+    try {
+      const { error } = await supabase
+        .from('claims')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', claim.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setClaim({
+        ...claim,
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
+      
+      toast.success(`Claim status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating claim status:', error);
+      toast.error('Failed to update claim status');
+    }
+  };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <Sidebar />
+          <main className="flex-1 bg-background">
+            <div className="container py-6 lg:py-8">
+              <div className="h-screen flex items-center justify-center">
+                <p>Loading claim details...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   if (!claim) {
     return (
@@ -34,9 +131,18 @@ const ClaimDetails = () => {
     );
   }
 
-  const handleStatusChange = (newStatus: string) => {
-    // In a real app, this would call an API
-    toast.success(`Claim status updated to ${newStatus}`);
+  // Transform Supabase claim data to the format expected by the UI
+  const formattedClaim = {
+    id: claim.id,
+    claimNumber: claim.policy_number,
+    policyHolder: claim.claimant_name,
+    amount: claim.amount || 0,
+    description: claim.description || '',
+    status: claim.status as ClaimStatus,
+    dateSubmitted: claim.created_at,
+    dateUpdated: claim.updated_at,
+    assignedTo: claim.user_id,
+    documents: []
   };
 
   return (
@@ -57,10 +163,10 @@ const ClaimDetails = () => {
                 <Card className="mb-6">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle>{claim.claimNumber}</CardTitle>
-                      <CardDescription>Submitted on {formatDate(claim.dateSubmitted)}</CardDescription>
+                      <CardTitle>{formattedClaim.claimNumber}</CardTitle>
+                      <CardDescription>Submitted on {formatDate(formattedClaim.dateSubmitted)}</CardDescription>
                     </div>
-                    <StatusBadge status={claim.status} />
+                    <StatusBadge status={formattedClaim.status} />
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -68,28 +174,28 @@ const ClaimDetails = () => {
                         <p className="text-sm text-muted-foreground">Policy Holder</p>
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <p className="font-medium">{claim.policyHolder}</p>
+                          <p className="font-medium">{formattedClaim.policyHolder}</p>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">Claim Amount</p>
                         <div className="flex items-center">
                           <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <p className="font-medium">{formatCurrency(claim.amount)}</p>
+                          <p className="font-medium">{formatCurrency(formattedClaim.amount)}</p>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">Assigned To</p>
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <p className="font-medium">{assignedAgent?.name}</p>
+                          <p className="font-medium">{assignedAgent?.name || 'Loading...'}</p>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">Last Updated</p>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <p className="font-medium">{formatDate(claim.dateUpdated)}</p>
+                          <p className="font-medium">{formatDate(formattedClaim.dateUpdated)}</p>
                         </div>
                       </div>
                     </div>
@@ -98,21 +204,16 @@ const ClaimDetails = () => {
                     
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Description</p>
-                      <p>{claim.description}</p>
+                      <p>{formattedClaim.description}</p>
                     </div>
-                    
-                    {claim.notes && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Notes</p>
-                        <p>{claim.notes}</p>
-                      </div>
-                    )}
                   </CardContent>
                   <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={() => setShareDialogOpen(true)}>
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share Claim
-                    </Button>
+                    {isAgent && (
+                      <Button variant="outline" onClick={() => setShareDialogOpen(true)}>
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share Claim
+                      </Button>
+                    )}
                     <Button>Update Claim</Button>
                   </CardFooter>
                 </Card>
@@ -126,15 +227,15 @@ const ClaimDetails = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-2">
                         <Button 
-                          variant={claim.status === 'approved' ? 'default' : 'outline'} 
-                          onClick={() => handleStatusChange('Approved')}
+                          variant={formattedClaim.status === 'approved' ? 'default' : 'outline'} 
+                          onClick={() => handleStatusChange('approved')}
                           className="w-full"
                         >
                           Approve Claim
                         </Button>
                         <Button 
-                          variant={claim.status === 'denied' ? 'default' : 'outline'} 
-                          onClick={() => handleStatusChange('Denied')}
+                          variant={formattedClaim.status === 'denied' ? 'default' : 'outline'} 
+                          onClick={() => handleStatusChange('denied')}
                           className="w-full"
                         >
                           Deny Claim
@@ -142,15 +243,15 @@ const ClaimDetails = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Button 
-                          variant={claim.status === 'inReview' ? 'default' : 'outline'} 
-                          onClick={() => handleStatusChange('In Review')}
+                          variant={formattedClaim.status === 'inReview' ? 'default' : 'outline'} 
+                          onClick={() => handleStatusChange('inReview')}
                           className="w-full"
                         >
                           Mark as In Review
                         </Button>
                         <Button 
-                          variant={claim.status === 'archived' ? 'default' : 'outline'} 
-                          onClick={() => handleStatusChange('Archived')}
+                          variant={formattedClaim.status === 'archived' ? 'default' : 'outline'} 
+                          onClick={() => handleStatusChange('archived')}
                           className="w-full"
                         >
                           Archive Claim
@@ -168,22 +269,10 @@ const ClaimDetails = () => {
                     <CardDescription>Files related to this claim</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {claim.documents && claim.documents.length > 0 ? (
-                      claim.documents.map((doc, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                            <span>{doc}</span>
-                          </div>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-6">
-                        <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">No documents attached</p>
-                      </div>
-                    )}
+                    <div className="text-center py-6">
+                      <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No documents attached</p>
+                    </div>
                   </CardContent>
                   <CardFooter>
                     <Button variant="outline" className="w-full">
@@ -196,7 +285,7 @@ const ClaimDetails = () => {
           </div>
         </main>
         <ShareClaimDialog 
-          claim={claim}
+          claim={formattedClaim}
           isOpen={shareDialogOpen}
           onClose={() => setShareDialogOpen(false)}
         />

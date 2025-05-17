@@ -10,12 +10,16 @@ import ClaimStatusTabs from '@/components/ClaimStatusTabs';
 import ClaimList from '@/components/ClaimList';
 import ClaimActions from '@/components/ClaimActions';
 import { useClaims } from '@/hooks/useClaims';
+import { useSharedClaims } from '@/hooks/useSharedClaims';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Claims = () => {
   const { currentUser, userProfile } = useAuth();
   const isAdmin = userProfile?.role === 'admin';
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [claimToShare, setClaimToShare] = useState<Claim | null>(null);
+  const [viewMode, setViewMode] = useState<'my-claims' | 'shared-claims'>('my-claims');
   
   const {
     filteredClaims,
@@ -29,6 +33,8 @@ const Claims = () => {
     handleClaimSelect,
     handleBulkAction
   } = useClaims();
+
+  const { sharedClaims, loading: loadingShared } = useSharedClaims();
 
   const handleShare = (claimId: string) => {
     const claim = filteredClaims.find(c => c.id === claimId);
@@ -63,42 +69,103 @@ const Claims = () => {
                   Manage and process insurance claims
                 </p>
               </div>
-              <ClaimActions 
-                selectedClaims={selectedClaims} 
-                handleBulkAction={handleBulkAction}
-                setSelectedClaims={setSelectedClaims}
-                isAdmin={isAdmin}
-              />
-            </div>
-
-            <div className="mb-6">
-              <ClaimSearch 
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-              />
-            </div>
-
-            <ClaimStatusTabs 
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-            >
-              <p className="text-muted-foreground mb-2">
-                {filteredClaims.length} claims • {selectedClaims.length} selected
-              </p>
-              <div className="mt-0">
-                <ClaimList
-                  loading={loading}
-                  filteredClaims={filteredClaims}
-                  selectedClaims={selectedClaims}
-                  handleClaimSelect={handleClaimSelect}
-                  handleShare={handleShare}
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  setActiveTab={setActiveTab}
-                  currentUser={currentUser}
+              
+              {viewMode === 'my-claims' && (
+                <ClaimActions 
+                  selectedClaims={selectedClaims} 
+                  handleBulkAction={handleBulkAction}
+                  setSelectedClaims={setSelectedClaims}
+                  isAdmin={isAdmin}
                 />
-              </div>
-            </ClaimStatusTabs>
+              )}
+            </div>
+
+            {/* Toggle between my claims and shared claims */}
+            {!isAdmin && (
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'my-claims' | 'shared-claims')} className="mb-6">
+                <TabsList>
+                  <TabsTrigger value="my-claims">My Claims</TabsTrigger>
+                  <TabsTrigger value="shared-claims">Shared With Me ({sharedClaims.length})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            {viewMode === 'my-claims' && (
+              <>
+                <div className="mb-6">
+                  <ClaimSearch 
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                  />
+                </div>
+
+                <ClaimStatusTabs 
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                >
+                  <p className="text-muted-foreground mb-2">
+                    {filteredClaims.length} claims • {selectedClaims.length} selected
+                  </p>
+                  <div className="mt-0">
+                    <ClaimList
+                      loading={loading}
+                      filteredClaims={filteredClaims}
+                      selectedClaims={selectedClaims}
+                      handleClaimSelect={handleClaimSelect}
+                      handleShare={handleShare}
+                      searchTerm={searchTerm}
+                      setSearchTerm={setSearchTerm}
+                      setActiveTab={setActiveTab}
+                      currentUser={currentUser}
+                    />
+                  </div>
+                </ClaimStatusTabs>
+              </>
+            )}
+
+            {viewMode === 'shared-claims' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Claims Shared With Me</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingShared ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3].map((n) => (
+                        <div key={n} className="h-48 bg-muted rounded-md animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : sharedClaims.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground">
+                        No claims have been shared with you yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {sharedClaims.map((sharedClaim) => (
+                        <ClaimCard 
+                          key={sharedClaim.id}
+                          claim={{
+                            id: sharedClaim.claim.id,
+                            claimNumber: sharedClaim.claim.policy_number,
+                            policyHolder: sharedClaim.claim.claimant_name,
+                            amount: sharedClaim.claim.amount || 0,
+                            description: sharedClaim.claim.description || '',
+                            status: sharedClaim.claim.status,
+                            dateSubmitted: sharedClaim.claim.created_at,
+                            dateUpdated: sharedClaim.claim.updated_at,
+                            assignedTo: sharedClaim.claim.user_id,
+                            documents: []
+                          }}
+                          sharedBy={sharedClaim.shared_by_profile?.name}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </main>
         <ShareClaimDialog 

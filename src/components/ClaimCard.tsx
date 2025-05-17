@@ -6,21 +6,27 @@ import StatusBadge from './StatusBadge';
 import { Claim } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { Share2 } from 'lucide-react';
 
 interface ClaimCardProps {
   claim: Claim;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   onShare?: (id: string) => void;
+  sharedBy?: string;
 }
 
 const ClaimCard: React.FC<ClaimCardProps> = ({ 
   claim, 
   isSelected = false, 
   onSelect,
-  onShare
+  onShare,
+  sharedBy
 }) => {
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
+  const isAgent = userProfile?.role === 'agent';
 
   return (
     <Card 
@@ -47,6 +53,13 @@ const ClaimCard: React.FC<ClaimCardProps> = ({
           <span>Incident Date: {new Date(claim.dateSubmitted).toLocaleDateString()}</span>
           <span>Updated: {new Date(claim.dateUpdated).toLocaleDateString()}</span>
         </div>
+        
+        {sharedBy && (
+          <div className="mt-2 text-xs flex items-center text-muted-foreground">
+            <Share2 className="h-3 w-3 mr-1" />
+            <span>Shared by: {sharedBy}</span>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="justify-between border-t pt-3 pb-3">
         <Button 
@@ -59,20 +72,19 @@ const ClaimCard: React.FC<ClaimCardProps> = ({
         >
           View Details
         </Button>
-        <Button 
-          size="sm" 
-          variant="ghost" 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onShare) {
+        
+        {isAgent && onShare && (
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={(e) => {
+              e.stopPropagation();
               onShare(claim.id);
-            } else {
-              navigate(`/claims/${claim.id}`);
-            }
-          }}
-        >
-          Share
-        </Button>
+            }}
+          >
+            Share
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
