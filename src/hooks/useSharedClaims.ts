@@ -51,12 +51,13 @@ export const useSharedClaims = () => {
     
     setLoading(true);
     try {
-      // Use a different approach with raw SQL since the types aren't updated yet
+      // Use the RPC function to get shared claims
       const { data, error } = await supabase.rpc('get_shared_claims_for_user', {
         user_id: currentUser.id
       });
       
       if (error) throw error;
+      
       setSharedClaims(data || []);
     } catch (error) {
       console.error('Error fetching shared claims:', error);

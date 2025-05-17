@@ -54,3 +54,15 @@ BEGIN
     sc.created_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to check if a claim is shared with a specific user
+CREATE OR REPLACE FUNCTION public.is_claim_shared_with_user(p_claim_id UUID, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.shared_claims
+    WHERE claim_id = p_claim_id AND shared_with = p_user_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
